@@ -1,28 +1,29 @@
 import { App } from "@slack/bolt";
 import { file, write } from "bun";
+import type { StandupDB, User } from "./types";
+import { mentionUser } from "./utils";
 
 // --- Team & DB setup ---
 const dbPath = `${import.meta.dir}/../standup.json`;
 
-type StandupDB = {
-  lastIndex: number;
-  team: string[];
-  history: Record<string, string>;
-};
 
 async function loadDB(): Promise<StandupDB> {
   try {
     const f = file(dbPath);
     if (!(await f.exists())) {
-      throw new Error(`Database file ${dbPath} does not exist. Please ensure standup.json exists with team members defined.`);
+      throw new Error(
+        `Database file ${dbPath} does not exist. Please ensure standup.json exists with team members defined.`
+      );
     }
     const data = await f.json();
-    
+
     // Validate that team array exists and is not empty
     if (!data.team || !Array.isArray(data.team) || data.team.length === 0) {
-      throw new Error("Team array is missing or empty in standup.json. Please add team members to the 'team' field.");
+      throw new Error(
+        "Team array is missing or empty in standup.json. Please add team members to the 'team' field."
+      );
     }
-    
+
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -36,6 +37,21 @@ async function saveDB(db: StandupDB) {
   await write(dbPath, JSON.stringify(db, null, 2));
 }
 
+async function getUsers() {
+  const usersList = await app.client.users.list({});
+
+  const members = usersList.members?.filter(
+    (u) => !u.is_bot && u.id !== "USLACKBOT" && !u.deleted
+  );
+
+  const team = members?.map((m) => ({
+    id: m.id,
+    name: m.profile?.real_name,
+  }));
+
+  await write("users.json", JSON.stringify(team, null, 2));
+}
+
 function getTodayKey(): string {
   const dateString = new Date().toISOString().split("T")[0];
   if (!dateString) {
@@ -44,21 +60,26 @@ function getTodayKey(): string {
   return dateString;
 }
 
-async function getTodayLeader(): Promise<string> {
+async function getTodayLeader(): Promise<User> {
   const db = await loadDB();
   const today = getTodayKey();
 
-  if (db.history[today]) return db.history[today];
+  // Check if we already have a leader for today
+  if (db.history[today]) {
+    const leaderId = db.history[today];
+    const leader = db.team.find((member) => member.id === leaderId);
+    if (leader) return leader;
+  }
 
   const nextIndex = (db.lastIndex + 1) % db.team.length;
   const leader = db.team[nextIndex];
-  
+
   if (!leader) {
     throw new Error(`No team member found at index ${nextIndex}`);
   }
 
   db.lastIndex = nextIndex;
-  db.history[today] = leader;
+  db.history[today] = leader.id;
   await saveDB(db);
 
   return leader;
@@ -76,5 +97,7 @@ await app.start(Number(Bun.env.PORT) || 3000);
 console.log("⚡️ Standup Bot running with Bun!");
 await app.client.chat.postMessage({
   channel: Bun.env.SLACK_CHANNEL_ID,
-  text: `${leader} is leading today's standup.`,
+  text: `${mentionUser(leader)} is leading today's standup.`,
 });
+
+console.log(`${leader.name} is leading today's standup.`);
