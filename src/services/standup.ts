@@ -1,6 +1,7 @@
 import type { User } from "../types";
 import { loadDB, saveDB } from "../database/db";
 import { getTodayKey } from "../utils/date";
+import type { App } from "@slack/bolt";
 
 export async function getTodayLeader(): Promise<User> {
   const db = await loadDB();
@@ -27,7 +28,7 @@ export async function getTodayLeader(): Promise<User> {
   return leader;
 }
 
-export async function sendStandupMessage(app: any): Promise<void> {
+export async function sendStandupMessage(app: App): Promise<void> {
   try {
     const leader = await getTodayLeader();
     const { mentionUser } = await import("../utils");
