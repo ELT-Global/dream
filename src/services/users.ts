@@ -1,7 +1,9 @@
 import { write } from "bun";
 import type { User } from "../types";
 
-export async function getUsers(app: any): Promise<void> {
+import type { App } from "@slack/bolt";
+
+export async function getUsers(app: App): Promise<void> {
   const usersList = await app.client.users.list({});
 
   const members = usersList.members?.filter(
