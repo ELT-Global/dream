@@ -1,103 +1,20 @@
-import { App } from "@slack/bolt";
-import { file, write } from "bun";
-import type { StandupDB, User } from "./types";
-import { mentionUser } from "./utils";
+import * as cron from "node-cron";
+import { createSlackApp } from "./config/slack";
+import { sendStandupMessage } from "./services/standup";
+import { CronExpression } from "./utils/cron-expressions";
 
-// --- Team & DB setup ---
-const dbPath = `${import.meta.dir}/../standup.json`;
+async function main() {
+  const app = createSlackApp();
 
+  await app.start(Number(Bun.env.PORT) || 3000);
+  console.log("⚡️ Standup Bot running with Bun!");
 
-async function loadDB(): Promise<StandupDB> {
-  try {
-    const f = file(dbPath);
-    if (!(await f.exists())) {
-      throw new Error(
-        `Database file ${dbPath} does not exist. Please ensure standup.json exists with team members defined.`
-      );
-    }
-    const data = await f.json();
-
-    // Validate that team array exists and is not empty
-    if (!data.team || !Array.isArray(data.team) || data.team.length === 0) {
-      throw new Error(
-        "Team array is missing or empty in standup.json. Please add team members to the 'team' field."
-      );
-    }
-
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(`Failed to load database: ${error}`);
-  }
-}
-
-async function saveDB(db: StandupDB) {
-  await write(dbPath, JSON.stringify(db, null, 2));
-}
-
-async function getUsers() {
-  const usersList = await app.client.users.list({});
-
-  const members = usersList.members?.filter(
-    (u) => !u.is_bot && u.id !== "USLACKBOT" && !u.deleted
+  // Schedule daily standup message at 10 AM (Mon-Fri)
+  cron.schedule(CronExpression.EVERY_DAY_AT_10_AM, () =>
+    sendStandupMessage(app)
   );
 
-  const team = members?.map((m) => ({
-    id: m.id,
-    name: m.profile?.real_name,
-  }));
-
-  await write("users.json", JSON.stringify(team, null, 2));
+  console.log("Cron job scheduled for daily standup at 10 AM (Mon-Fri)");
 }
 
-function getTodayKey(): string {
-  const dateString = new Date().toISOString().split("T")[0];
-  if (!dateString) {
-    throw new Error("Failed to generate date string");
-  }
-  return dateString;
-}
-
-async function getTodayLeader(): Promise<User> {
-  const db = await loadDB();
-  const today = getTodayKey();
-
-  // Check if we already have a leader for today
-  if (db.history[today]) {
-    const leaderId = db.history[today];
-    const leader = db.team.find((member) => member.id === leaderId);
-    if (leader) return leader;
-  }
-
-  const nextIndex = (db.lastIndex + 1) % db.team.length;
-  const leader = db.team[nextIndex];
-
-  if (!leader) {
-    throw new Error(`No team member found at index ${nextIndex}`);
-  }
-
-  db.lastIndex = nextIndex;
-  db.history[today] = leader.id;
-  await saveDB(db);
-
-  return leader;
-}
-
-// --- Slack app ---
-const app = new App({
-  token: Bun.env.SLACK_BOT_TOKEN,
-  signingSecret: Bun.env.SLACK_SIGNING_SECRET,
-});
-
-const leader = await getTodayLeader();
-
-await app.start(Number(Bun.env.PORT) || 3000);
-console.log("⚡️ Standup Bot running with Bun!");
-await app.client.chat.postMessage({
-  channel: Bun.env.SLACK_CHANNEL_ID,
-  text: `${mentionUser(leader)} is leading today's standup.`,
-});
-
-console.log(`${leader.name} is leading today's standup.`);
+main().catch(console.error);
