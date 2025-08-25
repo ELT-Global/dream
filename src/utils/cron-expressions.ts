@@ -9,6 +9,7 @@ export const CronExpression = {
   EVERY_HOUR: "0 0 * * * *",
   EVERY_DAY_AT_MIDNIGHT: "0 0 0 * * *",
   EVERY_DAY_AT_10_AM: "0 0 10 * * *",
+  EVERY_WEEKDAY_AT_10_AM: "0 0 10 * * 1-5",
   EVERY_WEEK: "0 0 0 * * 0",
   EVERY_MONTH: "0 0 0 1 * *",
   EVERY_YEAR: "0 0 0 1 1 *",

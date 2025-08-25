@@ -13,14 +13,14 @@ async function main() {
     const now = new Date();
       process.stdout.write(`\r🕐 Current server time: ${now.toLocaleString()}`);
   }, 1000);
-  cron.schedule(CronExpression.EVERY_DAY_AT_10_AM, () =>
+  cron.schedule(CronExpression.EVERY_WEEKDAY_AT_10_AM, () =>
     sendStandupMessage(app),
     {
       timezone: "Asia/Kolkata",
     }
   );
 
-  console.log("Cron job scheduled for daily standup at 10 AM (Mon-Fri)");
+  console.log("Cron job scheduled for weekday standup at 10 AM (Mon-Fri)");
 }
 
 main().catch(console.error);
