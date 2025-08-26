@@ -4,7 +4,10 @@ import { Leader, type ILeader } from "../database/leaders.model";
 
 export async function getTodayLeader(): Promise<User> {
   const allLeaders: User[] = await Bun.file("users.json").json();
-  const newLeader = allLeaders[Math.floor(Math.random() * allLeaders.length)]!;
+  if (!Array.isArray(allLeaders) || allLeaders.length === 0) {
+    throw new Error("No leaders available in users.json");
+  }
+  const newLeader = allLeaders[Math.floor(Math.random() * allLeaders.length)];
   const saveLeader: ILeader = new Leader({
     leaderId: newLeader.id,
     name: newLeader.name,
