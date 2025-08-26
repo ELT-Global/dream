@@ -17,7 +17,6 @@ async function main() {
   await connectMongoDB();
 
   await createUserJsonFile(app);
-  await sendStandupMessage(app);
 
   cron.schedule(
     CronExpression.EVERY_WEEKDAY_AT_10_AM,
