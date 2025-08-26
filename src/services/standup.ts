@@ -9,12 +9,12 @@ export async function getTodayLeader(): Promise<User> {
   }
   const newLeader = allLeaders[Math.floor(Math.random() * allLeaders.length)];
   const saveLeader: ILeader = new Leader({
-    leaderId: newLeader.id,
-    name: newLeader.name,
+    leaderId: newLeader!.id,
+    name: newLeader!.name,
     date: new Date(),
   });
   await saveLeader.save();
-  return newLeader;
+  return newLeader!;
 }
 
 export async function sendStandupMessage(app: App): Promise<void> {
