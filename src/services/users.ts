@@ -23,5 +23,5 @@ export async function createUserJsonFile(app: App): Promise<void> {
   if (await Bun.file("users.json").exists()) {
     return;
   }
-  await write("users.json", JSON.stringify(await getUsers(app), null, 2));
+  await getUsers(app);
 }
