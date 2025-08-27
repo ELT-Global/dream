@@ -1,9 +1,10 @@
 import type { User } from "../types";
 import type { App } from "@slack/bolt";
 import { Leader, type ILeader } from "../database/leaders.model";
+import { USERS } from "../constants/users.constant";
 
 export async function getTodayLeader(): Promise<User> {
-  const allLeaders: User[] = await Bun.file("users.json").json();
+  const allLeaders: User[] = USERS;
   if (!Array.isArray(allLeaders) || allLeaders.length === 0) {
     throw new Error("No leaders available in users.json");
   }
