@@ -18,6 +18,9 @@ async function main() {
 
   await createUserJsonFile(app);
 
+  const leaders =  await Bun.file("users.json").json();
+  console.log(leaders)
+
   cron.schedule(
     CronExpression.EVERY_WEEKDAY_AT_10_AM,
     () => sendStandupMessage(app),
