@@ -5,23 +5,38 @@ import { USERS } from "../constants/users.constant";
 
 export async function getTodayLeader(): Promise<User> {
   const allLeaders: User[] = USERS;
-  if (!Array.isArray(allLeaders) || allLeaders.length === 0) {
-    throw new Error("No leaders available in users.json");
+
+  const lastLeader = await Leader.findOne().sort({ date: -1 }).lean().exec();
+  const lastLeaderIndex = lastLeader
+    ? allLeaders.findIndex((user) => user.id === lastLeader.leaderId)
+    : -1;
+  if (lastLeaderIndex != -1) {
+    const newLeaderIndex = (lastLeaderIndex + 1) % allLeaders.length;
+    const newLeader = allLeaders[newLeaderIndex];
+    const saveLeader: ILeader = new Leader({
+      leaderId: newLeader!.id,
+      name: newLeader!.name,
+      date: new Date(),
+    });
+    await saveLeader.save();
+    return newLeader!;
+  } else {
+    const newLeader = allLeaders[0];
+    const saveLeader: ILeader = new Leader({
+      leaderId: newLeader!.id,
+      name: newLeader!.name,
+      date: new Date(),
+    });
+    await saveLeader.save();
+    return newLeader!;
   }
-  const newLeader = allLeaders[Math.floor(Math.random() * allLeaders.length)];
-  const saveLeader: ILeader = new Leader({
-    leaderId: newLeader!.id,
-    name: newLeader!.name,
-    date: new Date(),
-  });
-  await saveLeader.save();
-  return newLeader!;
 }
 
 export async function sendStandupMessage(app: App): Promise<void> {
   try {
     const leader = await getTodayLeader();
     const { mentionUser } = await import("../utils/mention-user");
+
 
     await app.client.chat.postMessage({
       channel: Bun.env.SLACK_CHANNEL_ID,
